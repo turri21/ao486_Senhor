@@ -1,5 +1,3 @@
-ao486 MiSTer QMTECH -- Tested: Working Video 1080p & Sound
-
 # ao486 port for MiSTer by Sorgelig.
 
 MiSTer port of the ao486 core originally written by Aleksander Osman, which has been greatly reworked with many new features and performance added.
