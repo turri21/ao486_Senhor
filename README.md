@@ -1,4 +1,4 @@
-ao486 MiSTer QMTECH -- Tested: Working Video 720p, 1080p & Sound -- Use Quartus 23.1 to synthesize this core.
+ao486 MiSTer QMTECH -- Tested: Working Video 720p, 1080p & Sound -- Use Quartus 17.0.2 to synthesize this core.
 
 # ao486 port for MiSTer by Sorgelig.
 
