@@ -129,7 +129,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HDMI_MCLK
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HDMI_SCLK
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to HDMI_TX_*
 
-#MiSTer QMTECH: If not disabled the audio through HDMI will have crackles...
+#MiSTer_QMTECH: If not disabled the audio through HDMI will have crackles...
 #set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to HDMI_TX_D[*]
 #set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to HDMI_TX_DE
 #set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to HDMI_TX_HS
