@@ -87,7 +87,7 @@ module sys_top
 	//output        SDIO_CLK,
 
 	//////////// I/O ///////////
-	output        LED_USER,     //MiSTer QMTECH: If commented, it breaks the HDMI signal @ 720p...
+	output        LED_USER,     //MiSTer_QMTECH: If commented, it breaks the HDMI signal @ 720p...
 	////output        LED_HDD,
 	////output        LED_POWER,
 	//input         BTN_USER,
@@ -1376,7 +1376,7 @@ osd vga_osd
 	.io_din(io_din),
 	.osd_status(osd_status),
 
-//MiSTer QMTECH: Do not disable the following statements or the screen will be blank.
+//MiSTer_QMTECH: Do not disable the following statements or the screen will be blank.
 	.clk_video(clk_vid),
 	.din(vga_data_sl),
 	.hs_in(vga_hs_sl),
