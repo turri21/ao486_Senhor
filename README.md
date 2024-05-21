@@ -1,4 +1,7 @@
-ao486 MiSTer QMTECH -- Tested: Working Video 720p, 1080p & Sound -- Use Quartus 17.0.2 on Linux to synthesize this core. Only Quartus 23.1 on Windows synthesizes a working .rbf
+-=(ao486_Senhor notes)=- 
+Tested: Working Video 720p, 1080p & Sound -- Use Quartus 17.0.2 on Linux to synthesize this core (See the "Building core" section). 
+Only Quartus 23.1 on Windows synthesizes a working .rbf
+
 # ao486 port for MiSTer by Sorgelig.
 
 MiSTer port of the ao486 core originally written by Aleksander Osman, which has been greatly reworked with many new features and performance added.
