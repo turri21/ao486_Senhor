@@ -1,6 +1,6 @@
 -=(ao486_Senhor notes)=- 
 
-Tested: Working Video 720p, 1080p & Sound -- Use Quartus 17.0.2 on Linux to synthesize this core (See the "Building core" section). 
+Tested: Working Video 720p, 1080p & Sound -- Use Quartus 17.0.2 on Linux to synthesize this core (see the "Building core" section). 
 
 Only Quartus 23.1 on Windows synthesizes a working .rbf
 
