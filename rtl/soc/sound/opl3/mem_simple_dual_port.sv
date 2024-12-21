@@ -41,6 +41,7 @@
 `timescale 1ns / 1ps
 `default_nettype none
 /* altera message_off 127005 */
+
 module mem_simple_dual_port #(
     parameter DATA_WIDTH = 0,
     parameter DEPTH = 0,
@@ -73,23 +74,22 @@ module mem_simple_dual_port #(
         always_ff @(posedge clkb)
             if (reb)
                 dob_p1 <= dob_p0;
+
+        if (OUTPUT_DELAY == 1)
+            always_comb dob = dob_p1;
+        else if (OUTPUT_DELAY == 2) begin
+            logic [DATA_WIDTH-1:0] dob_p2 = DEFAULT_VALUE;
+
+            always_ff @(posedge clkb)
+                dob_p2 <= dob_p1;
+
+            always_comb dob = dob_p2;
+        end
+        // else
+        //     $fatal("OUTPUT_DELAY must be 0, 1, or 2"); unsupported by Quartus 17
     end
-
-    if (OUTPUT_DELAY == 2) begin
-        logic [DATA_WIDTH-1:0] dob_p2 = DEFAULT_VALUE;
-
-        always_ff @(posedge clkb)
-            dob_p2 <= dob_p1;
-    end
-
-    if (OUTPUT_DELAY == 0)
+    else
         always_comb dob = dob_p0;
-    else if (OUTPUT_DELAY == 1)
-        always_comb dob = dob_p1;
-    else if (OUTPUT_DELAY == 2)
-        always_comb dob = dob_p2;
-    // else
-    //     $fatal("OUTPUT_DELAY must be 0, 1, or 2"); unsupported by Quartus 17
     endgenerate
 endmodule
 `default_nettype wire

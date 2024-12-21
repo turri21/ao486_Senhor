@@ -41,14 +41,14 @@
 #
 #******************************************************************************/
 package opl3_pkg;
-    localparam CLK_FREQ = 14.318181e6; // original OPL3 clk rate
+    localparam CLK_FREQ = 24.576e6;
     localparam DAC_OUTPUT_WIDTH = 16;
     localparam INSTANTIATE_TIMERS = 1; // set to 1 to use timers, 0 to save area
     localparam NUM_LEDS = 0; // connected to kon bank 0 starting at 0
-    localparam INSTANTIATE_SAMPLE_SYNC_TO_DAC_CLK = 1;
+    localparam INSTANTIATE_SAMPLE_SYNC_TO_DAC_CLK = 0;
 
     localparam DESIRED_SAMPLE_FREQ = 49.7159e3;
-    localparam int CLK_DIV_COUNT = 288;
+    localparam int CLK_DIV_COUNT = 494; // gets us to 49.74899KHz sample freq, +0.07% away
     localparam ACTUAL_SAMPLE_FREQ = CLK_FREQ/CLK_DIV_COUNT;
 
     localparam NUM_REG_PER_BANK = 'hF6;
@@ -65,12 +65,13 @@ package opl3_pkg;
     localparam REG_FB_WIDTH = 3;
 
     localparam SAMPLE_WIDTH = 16;
-    localparam DAC_LEFT_SHIFT = signed'(DAC_OUTPUT_WIDTH - SAMPLE_WIDTH - 2) < 0 ? 0 : DAC_OUTPUT_WIDTH - SAMPLE_WIDTH - 2;
-    localparam ENV_WIDTH = 9;
+    localparam DAC_LEFT_SHIFT = signed'(DAC_OUTPUT_WIDTH - SAMPLE_WIDTH - 2) < 0 ? 0 : DAC_OUTPUT_WIDTH - SAMPLE_WIDTH - 3;
+    localparam FINAL_ENV_WIDTH = 11;
     localparam OP_OUT_WIDTH = 13;
     localparam PHASE_ACC_WIDTH = 20;
+    localparam PHASE_FINAL_WIDTH = 10;
     localparam VIB_VAL_WIDTH = REG_FNUM_WIDTH - 7;
-    localparam ENV_RATE_COUNTER_OVERFLOW_WIDTH = $clog2(7);
+    localparam ENV_SHIFT_WIDTH = 2;
     localparam TREMOLO_MAX_COUNT = 13*1024;
     localparam TREMOLO_INDEX_WIDTH = $clog2(TREMOLO_MAX_COUNT);
     localparam AM_VAL_WIDTH = TREMOLO_INDEX_WIDTH - 8;

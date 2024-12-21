@@ -63,8 +63,7 @@ module system
 	input         mpu_rx,
 	output        mpu_tx,
 
-	input         clk_opl,
-	input         CLK_AUDIO,
+	input         clk_audio,
 	output [15:0] sample_sb_l,
 	output [15:0] sample_sb_r,
 	output [15:0] sample_opl_l,
@@ -107,6 +106,7 @@ module system
 	output        video_off,
 	input         video_fb_en,
 	input         video_lores,
+	input         video_border,
 
 	output        DDRAM_CLK,
 	input         DDRAM_BUSY,
@@ -634,8 +634,7 @@ rtc rtc
 sound sound
 (
 	.clk               (clk_sys),
-	.clk_opl           (clk_opl),
-	.CLK_AUDIO         (CLK_AUDIO),
+	.clk_audio         (clk_audio),
 	.rst_n             (~reset),
 
 	.clock_rate        (clock_rate),
@@ -792,6 +791,7 @@ vga vga
 	.vga_stride        (video_stride),
 	.vga_off           (video_off),
 	.vga_lores         (video_lores),
+	.vga_border        (video_border),
 
 	.irq               (irq_2)
 );

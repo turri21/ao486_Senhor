@@ -1,14 +1,17 @@
 /*******************************************************************************
 #   +html+<pre>
 #
-#   FILENAME: vibrato.sv
-#   AUTHOR: Greg Taylor     CREATION DATE: 13 Oct 2014
+#   FILENAME: mem_simple_dual_port_async_read.sv
+#   AUTHOR: Greg Taylor     CREATION DATE: 19 May 2024
 #
 #   DESCRIPTION:
-#   Prepare the phase increment for the NCO (calc multiplier and vibrato)
+#   Quartus needs special syn_ramstyle = "MLAB, no_rw_check"
+#   directive on RAM to place in MLAB (LUT RAM), otherwise registers get used for async read. Was not able
+#   to successfully include this in mem_simple_dual_port even with generate statements
+#   so created a separate module. Discovered this directive at https://community.intel.com/t5/Programmable-Devices/Synthesis-ramstyle/m-p/74079
 #
 #   CHANGE HISTORY:
-#   13 Oct 2014    Greg Taylor
+#   19 May 2024    Greg Taylor
 #       Initial version
 #
 #   Copyright (C) 2014 Greg Taylor <gtaylor@sonic.net>
@@ -41,44 +44,26 @@
 #******************************************************************************/
 `timescale 1ns / 1ps
 `default_nettype none
-/* altera message_off 10230 */
 
-module vibrato
-    import opl3_pkg::*;
-(
-    input wire clk,
-    input wire sample_clk_en,
-    input wire [REG_FNUM_WIDTH-1:0] fnum,
-    input wire dvb,
-    output logic [VIB_VAL_WIDTH-1:0] vib_val_p2 = 0
+module mem_simple_dual_port_async_read #(
+    parameter DATA_WIDTH = 0,
+    parameter DEPTH = 0,
+    parameter logic [DATA_WIDTH-1:0] DEFAULT_VALUE = 0
+) (
+    input wire clka,
+    input wire wea,
+    input wire [$clog2(DEPTH)-1:0] addra,
+    input wire [$clog2(DEPTH)-1:0] addrb,
+    input wire [DATA_WIDTH-1:0] dia,
+    output logic [DATA_WIDTH-1:0] dob
 );
-    localparam VIBRATO_INDEX_WIDTH = 13;
+    /* synthesis syn_ramstyle = "MLAB, no_rw_check" */
+    logic [DATA_WIDTH-1:0] ram [DEPTH-1:0] = '{default: DEFAULT_VALUE};
 
-    logic [VIBRATO_INDEX_WIDTH-1:0] vibrato_index_p1 = 0;
-    logic [VIB_VAL_WIDTH-1:0] delta0_p1;
-    logic [VIB_VAL_WIDTH-1:0] delta1_p1;
-    logic [VIB_VAL_WIDTH-1:0] delta2_p1;
-    logic [REG_FNUM_WIDTH-1:0] fnum_p1 = 0;
-    logic dvb_p1 = 0;
+    always_ff @(posedge clka)
+        if (wea)
+            ram[addra] <= dia;
 
-    always_ff @(posedge clk) begin
-        fnum_p1 <= fnum;
-        dvb_p1 <= dvb;
-    end
-
-    /*
-     * Low-Frequency Oscillator (LFO)
-     * 6.07Hz (Sample Freq/2**13)
-     */
-    always_ff @(posedge clk)
-        if (sample_clk_en)
-            vibrato_index_p1 <= vibrato_index_p1 + 1;
-
-    always_comb delta0_p1 = fnum_p1 >> 7;
-    always_comb delta1_p1 = ((vibrato_index_p1 >> 10) & 3) == 3 ? delta0_p1 >> 1 : delta0_p1;
-    always_comb delta2_p1 = !dvb_p1 ? delta1_p1 >> 1 : delta1_p1;
-
-    always_ff @(posedge clk)
-        vib_val_p2 <= ((vibrato_index_p1 >> 10) & 4) != 0 ? ~delta2_p1 : delta2_p1;
+    always_comb dob = ram[addrb];
 endmodule
 `default_nettype wire

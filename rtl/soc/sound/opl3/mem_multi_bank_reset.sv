@@ -1,13 +1,13 @@
 /*******************************************************************************
 #   +html+<pre>
 #
-#   FILENAME: mem_multi_bank.sv
-#   AUTHOR: Greg Taylor     CREATION DATE: 1 April 2024
+#   FILENAME: mem_multi_bank_reset.sv
+#   AUTHOR: Greg Taylor     CREATION DATE: 16 May 2024
 #
 #   DESCRIPTION:
 #
 #   CHANGE HISTORY:
-#   1 April 2024    Greg Taylor
+#   16 May 2024    Greg Taylor
 #       Initial version
 #
 #   Copyright (C) 2014 Greg Taylor <gtaylor@sonic.net>
@@ -40,16 +40,19 @@
 #******************************************************************************/
 `timescale 1ns / 1ps
 `default_nettype none
+/* altera message_off 10230 */
 
-module mem_multi_bank #(
+module mem_multi_bank_reset #(
     parameter DATA_WIDTH = 0,
     parameter DEPTH = 0,
     parameter OUTPUT_DELAY = 0, // 0, 1, or 2
-    parameter DEFAULT_VALUE = 0,
+    parameter DEFAULT_VALUE = '0,
     parameter NUM_BANKS = 0,
     parameter BANK_WIDTH = $clog2(NUM_BANKS)
 ) (
     input wire clk,
+    input wire reset,
+    input wire reset_mem,
     input wire wea,
     input wire reb, // only used if OUTPUT_DELAY >0
     input wire [BANK_WIDTH-1:0] banka,
@@ -57,13 +60,25 @@ module mem_multi_bank #(
     input wire [BANK_WIDTH-1:0] bankb,
     input wire [$clog2(DEPTH)-1:0] addrb,
     input wire [DATA_WIDTH-1:0] dia,
-    output logic [DATA_WIDTH-1:0] dob
+    output logic [DATA_WIDTH-1:0] dob,
+    output logic reset_mem_done_pulse
 );
     localparam PIPELINE_DELAY = 2;
 
     logic [NUM_BANKS-1:0] wea_array;
     logic [DATA_WIDTH-1:0] dob_array [NUM_BANKS];
     logic [PIPELINE_DELAY:1] [BANK_WIDTH-1:0] bankb_p;
+
+    enum {
+        IDLE,
+        RESETTING
+    } state = IDLE, next_state;
+
+    struct packed {
+        logic [BANK_WIDTH-1:0] bank;
+        logic [$clog2(DEPTH)-1:0] addr;
+        logic reset_mem_done;
+    } self = 0, next_self;
 
     pipeline_sr #(
         .DATA_WIDTH(BANK_WIDTH),
@@ -74,10 +89,52 @@ module mem_multi_bank #(
         .out(bankb_p)
     );
 
+    always_ff @(posedge clk) begin
+        state <= next_state;
+        self <= next_self;
+
+        if (reset) begin
+            state <= IDLE;
+            self <= 0;
+        end
+    end
+
+    always_comb begin
+        next_state = state;
+        next_self = self;
+
+        unique case (state)
+        IDLE: begin
+            if (reset_mem)
+                next_state = RESETTING;
+            next_self = 0;
+        end
+        RESETTING: begin
+            if (self.addr == DEPTH - 1) begin
+                next_self.addr = 0;
+                if (self.bank == NUM_BANKS - 1) begin
+                    next_state = IDLE;
+                    next_self.reset_mem_done = 1;
+                end
+                else
+                    next_self.bank = self.bank + 1;
+            end
+            else
+                next_self.addr = self.addr + 1;
+        end
+        endcase
+    end
+
+    always_comb reset_mem_done_pulse = self.reset_mem_done;
+
     generate
     genvar i;
     for (i = 0; i < NUM_BANKS; ++i) begin: bankgen
-        always_comb wea_array[i] = wea && banka == i;
+        always_comb
+            if (state == RESETTING)
+                wea_array[i] = self.bank == i;
+            else
+                wea_array[i] = wea && banka == i;
 
         if (OUTPUT_DELAY == 0)
             mem_simple_dual_port_async_read #(
@@ -87,9 +144,9 @@ module mem_multi_bank #(
             ) mem_bank (
                 .clka(clk),
                 .wea(wea_array[i]),
-                .addra,
+                .addra(state == RESETTING ? self.addr : addra),
                 .addrb,
-                .dia,
+                .dia(state == RESETTING ? DEFAULT_VALUE : dia),
                 .dob(dob_array[i])
             );
         else begin
@@ -107,9 +164,9 @@ module mem_multi_bank #(
                 .clkb(clk),
                 .wea(wea_array[i]),
                 .reb(reb_mem),
-                .addra,
+                .addra(state == RESETTING ? self.addr : addra),
                 .addrb,
-                .dia,
+                .dia(state == RESETTING ? DEFAULT_VALUE : dia),
                 .dob(dob_array[i])
             );
         end
