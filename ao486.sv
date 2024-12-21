@@ -193,7 +193,7 @@ led fdd_led(clk_sys, |mgmt_req[7:6], LED_USER);
 // 0         1         2         3          4         5         6
 // 01234567890123456789012345678901 23456789012345678901234567890123
 // 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXXXXXXXXX
+// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX XXXXXXXXXXXXXXXXXXXXXXXX
 
 `include "build_id.v"
 localparam CONF_STR =
@@ -219,6 +219,7 @@ localparam CONF_STR =
 	"P1O9,16bit format,1555,565;",
 	"P1OE,Low-Res,Native,4x;",
 	"P1oDE,Scale,Normal,V-Integer,Narrower HV-Integer,Wider HV-Integer;",
+	"P1oN,Border,No,Yes;",
 	"P1-;",
 	"P1O3,FM mode,OPL2,OPL3;",
 	"P1OH,C/MS,Disable,Enable;",
@@ -376,7 +377,7 @@ hps_ext hps_ext
 
 /////////////////////////////  PLL  ////////////////////////////////////
 
-wire clk_sys, clk_uart1, clk_uart2, clk_mpu, clk_opl, clk_vga;
+wire clk_sys, clk_uart1, clk_uart2, clk_mpu, clk_vga;
 reg [27:0] cur_rate;
 
 `ifdef DEBUG
@@ -405,18 +406,12 @@ pll pll
 	.outclk_0(clk_sys),
 	.outclk_1(clk_uart1),
 	.outclk_2(clk_mpu),
-	.outclk_3(),
+	.outclk_3(), // 14.285714 instead of 14.318181 which is within tolerance of typical resonator
 	.outclk_4(clk_vga),
 	.outclk_5(clk_uart2),
 	.locked(pll_locked),
 	.reconfig_to_pll(reconfig_to_pll),
 	.reconfig_from_pll(reconfig_from_pll)
-);
-
-pll_opl3 pll_opl3 (
-	.refclk(CLK_50M),
-	.rst('0),
-	.outclk_0(clk_opl)
 );
 
 wire [63:0] reconfig_to_pll;
@@ -588,7 +583,7 @@ assign VGA_F1 = 0;
 assign VGA_SL = 0;
 assign VGA_SCALER = 1;
 assign CLK_VIDEO = clk_vga;
-assign CE_PIXEL = vga_ce & vga_out_en;
+assign CE_PIXEL = vga_ce;
 
 wire [7:0] r,g,b;
 wire       HSync,VSync;
@@ -648,24 +643,6 @@ wire  [3:0] vga_flags;
 wire        vga_off;
 wire        vga_ce;
 wire        vga_de;
-wire        vga_lores = ~status[14];
-
-reg vga_out_en;
-always @(posedge clk_vga) begin
-	reg old_hs, old_vs;
-
-	if(vga_flags[3] & vga_lores) begin
-		old_hs <= HSync;
-		if(~old_hs & HSync) begin
-			old_vs <= VSync;
-			vga_out_en <= ~vga_out_en;
-			if(~old_vs & VSync) vga_out_en <= 0;
-		end
-	end
-	else begin
-		vga_out_en <= 1;
-	end
-end
 
 reg         fb_en;
 reg  [31:0] fb_base;
@@ -676,12 +653,12 @@ reg   [4:0] fb_fmt;
 reg         fb_off;
 
 always @(posedge clk_sys) begin
-	fb_en       <= ~vga_flags[2] && |vga_flags[1:0];
+	fb_en       <= ~vga_flags[2] && |vga_flags[1:0]; // framebuffer enabled for high resolution and 16-bit/24-bit/32-bit color modes
 	fb_base     <= {4'h3, 6'b111110, vga_start_addr, 2'b00};
 	fb_width    <= (vga_flags[1:0] == 3) ? 12'd640 /*({vga_width, 3'b000}/3)*/ : vga_flags[2] ? {1'b0, vga_width, 2'b00} : {vga_width, 3'b000};
 	fb_stride   <= {vga_stride, 3'b000};
 	fb_height   <= vga_flags[3] ? vga_height[10:1] : vga_height;
-	fb_fmt[2:0] <= (vga_flags[1:0] == 3) ? 3'b101 : (vga_flags[1:0] == 2) ? 3'b100 : 3'b011;
+	fb_fmt[2:0] <= (vga_flags[1:0] == 3) ? 3'b101 : (vga_flags[1:0] == 2) ? 3'b100 : 3'b011; // 011=8bpp(palette) 100=16bpp 101=24bpp 110=32bpp
 	fb_fmt[4:3] <= {~status[8],~status[9]};
 	fb_off      <= vga_off;
 end
@@ -748,8 +725,7 @@ wire [4:0] vol_en;
 system system
 (
 	.clk_sys              (clk_sys),
-	.clk_opl              (clk_opl),
-	.CLK_AUDIO            (CLK_AUDIO),
+	.clk_audio            (CLK_AUDIO),
 	.clk_uart1            (clk_uart1),
 	.clk_uart2            (clk_uart2),
 	.clk_mpu              (clk_mpu),
@@ -783,7 +759,8 @@ system system
 	.video_flags          (vga_flags),
 	.video_off            (vga_off),
 	.video_fb_en          (fb_en),
-	.video_lores          (vga_lores),
+	.video_lores          (~status[14]),
+	.video_border         (status[55]),
 
 	.sample_sb_l          (sb_out_l),
 	.sample_sb_r          (sb_out_r),
@@ -1011,29 +988,24 @@ wire mt32_lcd = mt32_lcd_on & mt32_lcd_en;
 
 ////////////////////////////  AUDIO  ///////////////////////////////////
 
-wire        speaker_out;
+wire        speaker_out, speaker_out_clk_audio;
 reg  [16:0] spk_out;
+
+synchronizer speaker_out_sync
+(
+	.clk(CLK_AUDIO),
+	.in(speaker_out),
+	.out(speaker_out_clk_audio)
+);
+
 always @(posedge CLK_AUDIO) begin
 	reg [16:0] spk;
-	spk <= {2'b00, {3'b000,speaker_out} << status[19:18], 11'd0};
+	spk <= {2'b00, {3'b000,speaker_out_clk_audio} << status[19:18], 11'd0};
 	spk_out <= spk >> ~vol_spk;
 end
 
 wire [15:0] sb_out_l, sb_out_r;
-wire [16:0] sb_l, sb_r;
-always @(posedge CLK_AUDIO) begin
-	reg [15:0] old_l0, old_l1, old_r0, old_r1;
-
-	old_l0 <= sb_out_l;
-	old_l1 <= old_l0;
-	if(old_l0 == old_l1) sb_l <= {old_l1[15],old_l1};
-
-	old_r0 <= sb_out_r;
-	old_r1 <= old_r0;
-	if(old_r0 == old_r1) sb_r <= {old_r1[15],old_r1};
-	end
-
-wire [15:0] opl_out_l, opl_out_r; // already synced to CLK_AUDIO
+wire [15:0] opl_out_l, opl_out_r;
 
 wire [15:0] cdda_l;
 wire [15:0] cdda_r;
@@ -1070,8 +1042,8 @@ always @(posedge CLK_AUDIO) begin
 	mt32_l <= volume(mt32_i2s_l, ~status[25] ? vol_midi_l : vol_en[4] ? vol_line_l : 5'd0);
 	mt32_r <= volume(mt32_i2s_r, ~status[25] ? vol_midi_r : vol_en[3] ? vol_line_r : 5'd0);
 
-	tmp_l <= {opl_out_l[15],opl_out_l} + sb_l + spk_out + (mt32_mute ? 17'd0 : {mt32_l[15],mt32_l}) + (vol_en[2] ? {cdda_l[15],cdda_l} : 17'd0);
-	tmp_r <= {opl_out_r[15],opl_out_r} + sb_r + spk_out + (mt32_mute ? 17'd0 : {mt32_r[15],mt32_r}) + (vol_en[1] ? {cdda_r[15],cdda_r} : 17'd0);
+	tmp_l <= {opl_out_l[15],opl_out_l} + {sb_out_l[15],sb_out_l} + spk_out + (mt32_mute ? 17'd0 : {mt32_l[15],mt32_l}) + (vol_en[2] ? {cdda_l[15],cdda_l} : 17'd0);
+	tmp_r <= {opl_out_r[15],opl_out_r} + {sb_out_r[15],sb_out_r} + spk_out + (mt32_mute ? 17'd0 : {mt32_r[15],mt32_r}) + (vol_en[1] ? {cdda_r[15],cdda_r} : 17'd0);
 
 	// clamp the output
 	out_l <= (^tmp_l[16:15]) ? {tmp_l[16], {15{tmp_l[15]}}} : tmp_l[15:0];
