@@ -1,3 +1,8 @@
+-=(ao486_Senhor notes)=-
+
+Tested: Working Video 720p, 1080p & Sound
+
+___
 # ao486 port for MiSTer by Sorgelig.
 
 MiSTer port of the ao486 core originally written by Aleksander Osman, which has been greatly reworked with many new features and performance added.
