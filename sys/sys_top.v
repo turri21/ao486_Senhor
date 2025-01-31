@@ -41,7 +41,7 @@ module sys_top
 	output        HDMI_TX_HS,
 	output        HDMI_TX_VS,
 	
-//	input         HDMI_TX_INT,
+	input         HDMI_TX_INT,
 
 	//////////// SDR ///////////
 	output [12:0] SDRAM_A,
@@ -127,12 +127,16 @@ module sys_top
 ///////////////////////// Senhor: Initializations ////////////////////////
 
 
-//wire [5:0] VGA_R;
-//wire [5:0] VGA_G;
-//wire [5:0] VGA_B;
+wire [5:0] VGA_R;
+wire [5:0] VGA_G;
+wire [5:0] VGA_B;
 //wire VGA_HS;
 //wire VGA_VS;
 wire VGA_EN = 1'b1;
+
+assign VGA_R = 6'b000000;
+assign VGA_G = 6'b000000;
+assign VGA_B = 6'b000000;
 
 //wire [3:0] SDIO_DAT;
 //wire SDIO_CMD = 1'b1;
@@ -1541,7 +1545,7 @@ assign SDCD_SPDIF = (mcp_en & ~spdif) ? 1'b0 : 1'bZ;
 	assign AUDIO_L     = av_dis ? 1'bZ : (SW[0] | mcp_en) ? HDMI_SCLK  : analog_l;
 `endif
 
-//assign HDMI_MCLK = clk_audio;
+assign HDMI_MCLK = clk_audio;
 wire clk_audio;
 
 pll_audio pll_audio
