@@ -841,8 +841,8 @@ wire host_memory_out_of_bounds = |((mem_address[16:15] ^ graph_system_memory) & 
 wire [16:0] host_address_reduced = { ~host_memory_out_of_bounds_mask & mem_address[16:15], mem_address[14:0] };
 
 wire [15:0] host_address =
-	(seq_access_chain4)             ? { host_address_reduced[15:2], 2'b00 } :
-	(~seq_access_odd_even_disabled) ? { host_address_reduced[15:1], 1'b0 } :
+	(seq_access_chain4)             ? { host_address_reduced[15:2], host_write ? seg_wr[1:0] : seg_rd[1:0] } : // segment select allows bank switching (4 banks) when 4 x 64kb plane RAM is active (used by e.g. Alien Carnage)
+	(~seq_access_odd_even_disabled) ? { host_address_reduced[15:1], ~general_odd_even_page } :                 // general_odd_even_page selects the 1=upper/0=lower 64kb page of memory when in odd/even mode
 	                                  host_address_reduced[15:0];
 
 assign vga_memmode = { general_enable_ram, graph_system_memory };
